@@ -978,12 +978,18 @@ export class OmitType<T extends AnyType, K extends keyof Infer<T>> extends Type<
 }
 
 export class LazyType<T extends () => AnyType> extends Type<Infer<ReturnType<T>>> {
+  private readonly seen = new Set<any>();
   constructor(private readonly fn: T) {
     super();
     // Since we can't know what the schema is we can't assume its not a coersionType and we need to disable the optimization
     (this as any)[coercionTypeSybol] = true;
   }
   parse(value: unknown, opts?: PathOptions): Infer<ReturnType<T>> {
+    if (this.seen.has(value)) {
+      this.seen.clear();
+      return value as any;
+    }
+    this.seen.add(value);
     const schema = this.fn();
     if (opts?.suppressPathErrMsg && schema instanceof ObjectType) {
       return schema.parse(value, opts) as any;

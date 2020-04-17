@@ -1669,4 +1669,28 @@ describe('Zod Parsing', () => {
       assert.ok(ret.friends[0].birthday instanceof Date);
     });
   });
+
+  it.only('should be able to validate circular objects', () => {
+    type Person = {
+      name: string;
+      bestFriend?: Person;
+    };
+
+    const schema: z.Type<Person> = z.object({
+      name: z.string(),
+      birthday: z.date(),
+      bestFriend: z.lazy(() => schema).optional(),
+    });
+
+    const bd = new Date().toISOString();
+
+    const p: any = { name: 'Guy', birthday: bd, bestFriend: { name: 'Narcisist', birthday: bd } } as any;
+    p.bestFriend.bestFriend = p.bestFriend;
+
+    const ret = schema.parse(p);
+    assert.deepEqual(ret, p);
+
+    const seenSet: Set<any> = (schema as any).objectShape.bestFriend.schema.seen;
+    assert.equal(seenSet.size, 0);
+  });
 });
